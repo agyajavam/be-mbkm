@@ -1,0 +1,302 @@
+package models
+
+import (
+	"time"
+	"github.com/lib/pq"
+)
+
+// ========================================
+// 1. STRUKTUR DASAR OBE: PL-CPL-BK-MK
+// ========================================
+
+// Kurikulum - Master kurikulum per periode
+type Kurikulum struct {
+	ID            int64     `json:"id" db:"id"`
+	ProdiID       int64     `json:"prodi_id" db:"prodi_id" binding:"required"`
+	NamaKurikulum string    `json:"nama_kurikulum" db:"nama_kurikulum" binding:"required"`
+	TahunMulai    int       `json:"tahun_mulai" db:"tahun_mulai" binding:"required,gte=2000"`
+	TahunSelesai  *int      `json:"tahun_selesai" db:"tahun_selesai"`
+	TotalSKS      int       `json:"total_sks" db:"total_sks" binding:"required,gte=144"`
+	Status        string    `json:"status" db:"status" binding:"required,oneof=draft aktif nonaktif"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ProfilLulusan - Profil Lulusan (PL)
+type ProfilLulusan struct {
+	ID          int64     `json:"id" db:"id"`
+	KurikulumID int64     `json:"kurikulum_id" db:"kurikulum_id" binding:"required"`
+	KodePL      string    `json:"kode_pl" db:"kode_pl" binding:"required"`
+	Deskripsi   string    `json:"deskripsi" db:"deskripsi" binding:"required"`
+	Urutan      int       `json:"urutan" db:"urutan"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// CPL - Capaian Pembelajaran Lulusan
+type CPL struct {
+	ID                 int64          `json:"id" db:"id"`
+	KurikulumID        int64          `json:"kurikulum_id" db:"kurikulum_id" binding:"required"`
+	ProfilLulusanID    *int64         `json:"profil_lulusan_id" db:"profil_lulusan_id"`
+	KodeCPL            string         `json:"kode_cpl" db:"kode_cpl" binding:"required"`
+	Kategori           string         `json:"kategori" db:"kategori" binding:"required,oneof=sikap pengetahuan keterampilan_umum keterampilan_khusus"`
+	Deskripsi          string         `json:"deskripsi" db:"deskripsi" binding:"required"`
+	ReferensiStandar   pq.StringArray `json:"referensi_standar" db:"referensi_standar"` // ["KKNI", "CC2020"]
+	Urutan             int            `json:"urutan" db:"urutan"`
+	CreatedAt          time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at" db:"updated_at"`
+}
+
+// BadanKeilmuan - Badan Keilmuan (BK)
+type BadanKeilmuan struct {
+	ID                 int64          `json:"id" db:"id"`
+	KurikulumID        int64          `json:"kurikulum_id" db:"kurikulum_id" binding:"required"`
+	KodeBK             string         `json:"kode_bk" db:"kode_bk" binding:"required"`
+	NamaBK             string         `json:"nama_bk" db:"nama_bk" binding:"required"`
+	Deskripsi          string         `json:"deskripsi" db:"deskripsi"`
+	ReferensiStandar   pq.StringArray `json:"referensi_standar" db:"referensi_standar"`
+	Urutan             int            `json:"urutan" db:"urutan"`
+	CreatedAt          time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at" db:"updated_at"`
+}
+
+// MataKuliah - Mata Kuliah (MK)
+type MataKuliah struct {
+	ID              int64     `json:"id" db:"id"`
+	KurikulumID     int64     `json:"kurikulum_id" db:"kurikulum_id" binding:"required"`
+	BadanKeilmuanID *int64    `json:"badan_keilmuan_id" db:"badan_keilmuan_id"`
+	KodeMK          string    `json:"kode_mk" db:"kode_mk" binding:"required"`
+	NamaMK          string    `json:"nama_mk" db:"nama_mk" binding:"required"`
+	SKS             int       `json:"sks" db:"sks" binding:"required,gte=1,lte=6"`
+	Semester        int       `json:"semester" db:"semester" binding:"required,gte=1,lte=8"`
+	JenisMK         string    `json:"jenis_mk" db:"jenis_mk" binding:"required,oneof=wajib pilihan"`
+	Deskripsi       string    `json:"deskripsi" db:"deskripsi"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 2. CPMK & MAPPING CPL-CPMK
+// ========================================
+
+// CPMK - Capaian Pembelajaran Mata Kuliah
+type CPMK struct {
+	ID             int64     `json:"id" db:"id"`
+	MataKuliahID   int64     `json:"mata_kuliah_id" db:"mata_kuliah_id" binding:"required"`
+	KodeCPMK       string    `json:"kode_cpmk" db:"kode_cpmk" binding:"required"`
+	Deskripsi      string    `json:"deskripsi" db:"deskripsi" binding:"required"`
+	TingkatKognitif string   `json:"tingkat_kognitif" db:"tingkat_kognitif" binding:"oneof=C1 C2 C3 C4 C5 C6"`
+	Urutan         int       `json:"urutan" db:"urutan"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// CPMKCPLMap - Pemetaan CPMK ke CPL dengan bobot
+type CPMKCPLMap struct {
+	ID              int64     `json:"id" db:"id"`
+	CPMKID          int64     `json:"cpmk_id" db:"cpmk_id" binding:"required"`
+	CPLID           int64     `json:"cpl_id" db:"cpl_id" binding:"required"`
+	BobotKontribusi float64   `json:"bobot_kontribusi" db:"bobot_kontribusi" binding:"required,gte=0,lte=100"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 3. RPS (Rencana Pembelajaran Semester)
+// ========================================
+
+// RPS - Master RPS per MK per periode
+type RPS struct {
+	ID               int64      `json:"id" db:"id"`
+	MataKuliahID     int64      `json:"mata_kuliah_id" db:"mata_kuliah_id" binding:"required"`
+	Periode          string     `json:"periode" db:"periode" binding:"required"` // "2024/2025 Ganjil"
+	DosenPengampuID  int64      `json:"dosen_pengampu_id" db:"dosen_pengampu_id" binding:"required"`
+	TanggalDisetujui *time.Time `json:"tanggal_disetujui" db:"tanggal_disetujui"`
+	DisetujuiOlehID  *int64     `json:"disetujui_oleh_id" db:"disetujui_oleh_id"`
+	Status           string     `json:"status" db:"status" binding:"required,oneof=draft submitted approved rejected"`
+	Catatan          string     `json:"catatan" db:"catatan"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// RPSMingguan - Detail pembelajaran per minggu (16 minggu)
+type RPSMingguan struct {
+	ID                 int64          `json:"id" db:"id"`
+	RPSID              int64          `json:"rps_id" db:"rps_id" binding:"required"`
+	Minggu             int            `json:"minggu" db:"minggu" binding:"required,gte=1,lte=16"`
+	SubCPMK            pq.StringArray `json:"sub_cpmk" db:"sub_cpmk"`
+	BahanKajian        string         `json:"bahan_kajian" db:"bahan_kajian" binding:"required"`
+	MetodePembelajaran string         `json:"metode_pembelajaran" db:"metode_pembelajaran" binding:"required"`
+	WaktuPembelajaran  int            `json:"waktu_pembelajaran" db:"waktu_pembelajaran"` // menit
+	Pengalaman         string         `json:"pengalaman" db:"pengalaman"`
+	KriteriaPenilaian  string         `json:"kriteria_penilaian" db:"kriteria_penilaian"`
+	BobotNilai         float64        `json:"bobot_nilai" db:"bobot_nilai" binding:"gte=0,lte=100"`
+	CreatedAt          time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 4. PENILAIAN & CAPAIAN CPL
+// ========================================
+
+// NilaiKomponen - Nilai per komponen (UTS, UAS, Tugas, Quiz)
+type NilaiKomponen struct {
+	ID              int64     `json:"id" db:"id"`
+	RPSID           int64     `json:"rps_id" db:"rps_id" binding:"required"`
+	MahasiswaID     int64     `json:"mahasiswa_id" db:"mahasiswa_id" binding:"required"`
+	NamaKomponen    string    `json:"nama_komponen" db:"nama_komponen" binding:"required"` // UTS, UAS, Tugas1, Quiz1
+	JenisKomponen   string    `json:"jenis_komponen" db:"jenis_komponen" binding:"required,oneof=UTS UAS Quiz Tugas Praktikum Proyek"`
+	Bobot           float64   `json:"bobot" db:"bobot" binding:"required,gte=0,lte=100"`
+	Nilai           float64   `json:"nilai" db:"nilai" binding:"required,gte=0,lte=100"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// NilaiCPMK - Agregasi nilai CPMK per mahasiswa
+type NilaiCPMK struct {
+	ID           int64     `json:"id" db:"id"`
+	MahasiswaID  int64     `json:"mahasiswa_id" db:"mahasiswa_id" binding:"required"`
+	CPMKID       int64     `json:"cpmk_id" db:"cpmk_id" binding:"required"`
+	MataKuliahID int64     `json:"mata_kuliah_id" db:"mata_kuliah_id" binding:"required"`
+	Periode      string    `json:"periode" db:"periode" binding:"required"`
+	NilaiAkhir   float64   `json:"nilai_akhir" db:"nilai_akhir"` // Hasil kalkulasi
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// NilaiCPL - Agregasi nilai CPL per mahasiswa
+type NilaiCPL struct {
+	ID          int64     `json:"id" db:"id"`
+	MahasiswaID int64     `json:"mahasiswa_id" db:"mahasiswa_id" binding:"required"`
+	CPLID       int64     `json:"cpl_id" db:"cpl_id" binding:"required"`
+	Periode     string    `json:"periode" db:"periode" binding:"required"`
+	NilaiAkhir  float64   `json:"nilai_akhir" db:"nilai_akhir"` // Hasil kalkulasi dari CPMK
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 5. TUGAS AKHIR
+// ========================================
+
+// TugasAkhir - Data tugas akhir mahasiswa
+type TugasAkhir struct {
+	ID                int64      `json:"id" db:"id"`
+	MahasiswaID       int64      `json:"mahasiswa_id" db:"mahasiswa_id" binding:"required"`
+	JudulTA           string     `json:"judul_ta" db:"judul_ta" binding:"required"`
+	PembimbingUtamaID int64      `json:"pembimbing_utama_id" db:"pembimbing_utama_id" binding:"required"`
+	TahapTA           string     `json:"tahap_ta" db:"tahap_ta" binding:"required,oneof=TA1 TA2"`
+	Status            string     `json:"status" db:"status" binding:"required,oneof=pengajuan bimbingan seminar sidang selesai"`
+	TanggalPengajuan  time.Time  `json:"tanggal_pengajuan" db:"tanggal_pengajuan"`
+	TanggalSeminar    *time.Time `json:"tanggal_seminar" db:"tanggal_seminar"`
+	TanggalSidang     *time.Time `json:"tanggal_sidang" db:"tanggal_sidang"`
+	NilaiAkhir        *float64   `json:"nilai_akhir" db:"nilai_akhir"`
+	CreatedAt         time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// LogbookTA - Logbook bimbingan TA
+type LogbookTA struct {
+	ID                int64     `json:"id" db:"id"`
+	TugasAkhirID      int64     `json:"tugas_akhir_id" db:"tugas_akhir_id" binding:"required"`
+	PembimbingID      int64     `json:"pembimbing_id" db:"pembimbing_id" binding:"required"`
+	TanggalBimbingan  time.Time `json:"tanggal_bimbingan" db:"tanggal_bimbingan" binding:"required"`
+	RingkasanDiskusi  string    `json:"ringkasan_diskusi" db:"ringkasan_diskusi" binding:"required"`
+	CatatanDosen      string    `json:"catatan_dosen" db:"catatan_dosen"`
+	StatusRevisi      string    `json:"status_revisi" db:"status_revisi" binding:"oneof=belum_selesai selesai"`
+	CreatedAt         time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// PenilaianTA - Penilaian TA (proposal, seminar, sidang)
+type PenilaianTA struct {
+	ID              int64     `json:"id" db:"id"`
+	TugasAkhirID    int64     `json:"tugas_akhir_id" db:"tugas_akhir_id" binding:"required"`
+	PengujiID       int64     `json:"penguji_id" db:"penguji_id" binding:"required"`
+	JenisPenilaian  string    `json:"jenis_penilaian" db:"jenis_penilaian" binding:"required,oneof=proposal seminar sidang"`
+	NilaiPresentasi float64   `json:"nilai_presentasi" db:"nilai_presentasi" binding:"gte=0,lte=100"`
+	NilaiIsi        float64   `json:"nilai_isi" db:"nilai_isi" binding:"gte=0,lte=100"`
+	NilaiTeknis     float64   `json:"nilai_teknis" db:"nilai_teknis" binding:"gte=0,lte=100"`
+	NilaiTotal      float64   `json:"nilai_total" db:"nilai_total"`
+	Catatan         string    `json:"catatan" db:"catatan"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 6. DASHBOARD & MONITORING PPEPP
+// ========================================
+
+// LogCQI - Log Continuous Quality Improvement
+type LogCQI struct {
+	ID               int64      `json:"id" db:"id"`
+	MataKuliahID     int64      `json:"mata_kuliah_id" db:"mata_kuliah_id" binding:"required"`
+	DosenID          int64      `json:"dosen_id" db:"dosen_id" binding:"required"`
+	Periode          string     `json:"periode" db:"periode" binding:"required"`
+	TemuanMasalah    string     `json:"temuan_masalah" db:"temuan_masalah" binding:"required"`
+	RencanaPerbaikan string     `json:"rencana_perbaikan" db:"rencana_perbaikan" binding:"required"`
+	TindakLanjut     string     `json:"tindak_lanjut" db:"tindak_lanjut"`
+	StatusTindakan   string     `json:"status_tindakan" db:"status_tindakan" binding:"oneof=direncanakan proses selesai"`
+	TanggalTemuan    time.Time  `json:"tanggal_temuan" db:"tanggal_temuan"`
+	TanggalSelesai   *time.Time `json:"tanggal_selesai" db:"tanggal_selesai"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 7. USER MANAGEMENT
+// ========================================
+
+// User - Data pengguna sistem
+type User struct {
+	ID        int64      `json:"id" db:"id"`
+	Username  string     `json:"username" db:"username" binding:"required"`
+	Email     string     `json:"email" db:"email" binding:"required,email"`
+	Password  string     `json:"-" db:"password"` // Hidden dari JSON
+	Role      string     `json:"role" db:"role" binding:"required,oneof=admin kaprodi dosen mahasiswa tim_akreditasi"`
+	IsActive  bool       `json:"is_active" db:"is_active"`
+	LastLogin *time.Time `json:"last_login" db:"last_login"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// Mahasiswa - Data mahasiswa
+type Mahasiswa struct {
+	ID          int64     `json:"id" db:"id"`
+	UserID      int64     `json:"user_id" db:"user_id" binding:"required"`
+	NIM         string    `json:"nim" db:"nim" binding:"required"`
+	NamaLengkap string    `json:"nama_lengkap" db:"nama_lengkap" binding:"required"`
+	ProdiID     int64     `json:"prodi_id" db:"prodi_id" binding:"required"`
+	Angkatan    int       `json:"angkatan" db:"angkatan" binding:"required"`
+	Status      string    `json:"status" db:"status" binding:"oneof=aktif cuti lulus keluar"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// Dosen - Data dosen
+type Dosen struct {
+	ID          int64     `json:"id" db:"id"`
+	UserID      int64     `json:"user_id" db:"user_id" binding:"required"`
+	NIDN        string    `json:"nidn" db:"nidn" binding:"required"`
+	NamaLengkap string    `json:"nama_lengkap" db:"nama_lengkap" binding:"required"`
+	ProdiID     int64     `json:"prodi_id" db:"prodi_id" binding:"required"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// ========================================
+// 8. AUDIT LOG
+// ========================================
+
+// AuditLog - Log aktivitas sistem
+type AuditLog struct {
+	ID        int64     `json:"id" db:"id"`
+	UserID    int64     `json:"user_id" db:"user_id"`
+	Action    string    `json:"action" db:"action"` // CREATE, UPDATE, DELETE, LOGIN
+	TableName string    `json:"table_name" db:"table_name"`
+	RecordID  *int64    `json:"record_id" db:"record_id"`
+	OldData   *string   `json:"old_data" db:"old_data"` // JSON
+	NewData   *string   `json:"new_data" db:"new_data"` // JSON
+	IPAddress string    `json:"ip_address" db:"ip_address"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
